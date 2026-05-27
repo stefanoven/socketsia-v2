@@ -166,6 +166,146 @@ psql -U ssm_user -d socketsia_v2 -c "\dt"
 
 ---
 
+## 4bis. Importare i dati dal DB legacy (MySQL → PostgreSQL)
+
+> **Solo se si sta migrando dalla versione 1 (Laravel/MySQL).**
+> Se si parte da zero, saltare questo blocco.
+
+Lo script `backend/scripts/migrate-data.js` legge dump `.sql` esportati da MySQL
+e li importa in PostgreSQL. È **idempotente**: può essere rieseguito in qualsiasi
+momento per sincronizzare nuovi dati senza duplicati.
+
+### 4bis-a — Prerequisiti sul server sorgente (dove gira MySQL)
+
+Verificare che `mysqldump` sia disponibile:
+
+```bash
+mysqldump --version
+```
+
+### 4bis-b — Esportare i dump dal database MySQL legacy
+
+Eseguire sul server (o PC) dove gira il DB MySQL legacy:
+
+```bash
+MYSQL_HOST="127.0.0.1"
+MYSQL_USER="socketsia"
+MYSQL_PASS="la_password_del_db_legacy"
+MYSQL_DB="socketsia"
+OUT="/tmp/socketsia-dump"
+
+mkdir -p "$OUT"
+
+for TABLE in users customers alarms keep_alives abbo_attivi statistics; do
+  mysqldump -h "$MYSQL_HOST" -u "$MYSQL_USER" -p"$MYSQL_PASS" \
+    --no-create-info --complete-insert --skip-triggers \
+    "$MYSQL_DB" "$TABLE" > "$OUT/socketsia_${TABLE}.sql"
+  echo "✓ $TABLE"
+done
+```
+
+I file prodotti (`socketsia_users.sql`, `socketsia_customers.sql`, ecc.) devono
+essere copiati sul server di produzione nella cartella `dbdump/` alla stessa
+altezza del repo:
+
+```
+/opt/
+├── socketsia-v2/          ← repo applicativo
+└── dbdump/                ← dump MySQL (NON in git)
+    ├── socketsia_users.sql
+    ├── socketsia_customers.sql
+    ├── socketsia_alarms.sql
+    ├── socketsia_keep_alives.sql
+    ├── socketsia_abbo_attivi.sql
+    └── socketsia_statistics.sql
+```
+
+```bash
+# Esempio: copia via scp dal server legacy
+scp /tmp/socketsia-dump/*.sql utente@server-produzione:/opt/dbdump/
+```
+
+### 4bis-c — Eseguire la migrazione dati
+
+```bash
+cd /opt/socketsia-v2/backend
+node scripts/migrate-data.js
+```
+
+Output atteso:
+
+```
+🔄 Starting data migration from MySQL dumps → PostgreSQL (socketsia_v2)...
+
+→ Migrating users...
+  ✓ N users migrated
+→ Migrating customers...
+  ✓ N customers migrated
+→ Migrating alarms (this may take a while — N records)...
+  N/N alarms...
+  ✓ N alarms migrated
+→ Migrating keep_alives...
+  ✓ N keep_alives migrated
+→ Migrating abboattivi...
+  ✓ N abboattivi migrated
+→ Migrating statistics...
+  ✓ Statistics: keepAlives=N, alarms=N
+
+📊 Verification:
+  Users: N | Customers: N | Alarms: N | KeepAlives: N
+
+✅ Migration complete!
+```
+
+### 4bis-d — Sincronizzare i dati aggiornati (riesecuzione)
+
+Quando il DB legacy viene aggiornato (nuovi clienti, nuovi allarmi), basta
+riesportare i dump e rieseguire lo script:
+
+```bash
+# 1. Esporta dump aggiornati sul server legacy (vedi 4bis-b)
+# 2. Copia i nuovi dump in /opt/dbdump/
+# 3. Riesegui la migrazione
+cd /opt/socketsia-v2/backend
+node scripts/migrate-data.js
+```
+
+Lo script è sicuro da rieseguire: usa `upsert` e `skipDuplicates`, quindi non
+crea mai record duplicati.
+
+| Tabella | Strategia | Effetto sulla riesecuzione |
+|---------|-----------|---------------------------|
+| `users` | `upsert` su `email` | aggiorna nome/tipo, aggiunge nuovi |
+| `customers` | `upsert` su `account` | aggiorna anagrafica, aggiunge nuovi |
+| `alarms` | `createMany` + `skipDuplicates` | aggiunge solo nuovi allarmi (per `id`) |
+| `keep_alives` | `upsert` su `customerId` | aggiorna l'ultimo keepalive per account |
+| `abbo_attivi` | `deleteMany` + `createMany` | rimpiazza l'intera tabella |
+| `statistics` | `update/create` | aggiorna i contatori totali |
+
+### 4bis-e — Correggere le sequence PostgreSQL dopo la migrazione
+
+Dopo aver importato dati con ID espliciti da MySQL, le sequence auto-increment
+di PostgreSQL possono essere desincronizzate (causando errori `Unique constraint`
+al primo `INSERT` dall'applicazione). Correggere sempre dopo la migrazione:
+
+```bash
+psql -U ssm_user -d socketsia_v2 << 'SQL'
+SELECT setval(pg_get_serial_sequence('customers',   'id'), MAX(id)) FROM customers;
+SELECT setval(pg_get_serial_sequence('alarms',      'id'), MAX(id)) FROM alarms;
+SELECT setval(pg_get_serial_sequence('keep_alives', 'id'), MAX(id)) FROM keep_alives;
+SELECT setval(pg_get_serial_sequence('users',       'id'), MAX(id)) FROM users;
+SELECT setval(pg_get_serial_sequence('statistics',  'id'), MAX(id)) FROM statistics;
+SQL
+```
+
+> **Perché è necessario?** PostgreSQL assegna l'ID successivo leggendo la sequence
+> (un contatore separato dalla tabella). Quando si inseriscono righe con ID espliciti
+> (come fa la migrazione), la sequence non avanza — rimane a 1 anche se la tabella
+> contiene già ID fino a 11.000. Il primo `INSERT` dell'applicazione genera quindi
+> un conflitto. `setval(..., MAX(id), true)` porta la sequence al valore corretto.
+
+---
+
 ## 5. Build del frontend
 
 ```bash
