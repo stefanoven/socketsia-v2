@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  type      String   @default("viewer") // "manager" | "viewer"
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Customer {
+  id                Int       @id @default(autoincrement())
+  account           String    @unique @db.VarChar(20)
+  customer          String
+  address           String    @default("")
+  surveyeCode       String    @db.VarChar(20) @map("surveye_code")
+  createdBy         Int       @map("created_by")
+  isAlive           Boolean   @default(false) @map("is_alive")
+  isAlarmsSnoozed   Boolean   @default(false) @map("is_alarms_snoozed")
+  alarmsSnoozedBy   Int?      @map("alarms_snoozed_by")
+  isAliveSnoozed    Boolean   @default(false) @map("is_alive_snoozed")
+  aliveSnoozedBy    Int?      @map("alive_snoozed_by")
+  testedBy          Int?      @map("tested_by")
+  testedByName      String?   @map("tested_by_name")
+  testedAt          DateTime? @map("tested_at")
+  freezedBy         Int?      @map("freezed_by")
+  freezedByName     String?   @map("freezed_by_name")
+  freezedAt         DateTime? @map("freezed_at")
+  subscription      Int       @default(1)
+  subscriptionDate  DateTime? @map("subscription_date")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  alarms      Alarm[]
+  keepAlive   KeepAlive?
+  siaMessages SiaMessage[]
+
+  @@map("customers")
+}
+
+model Alarm {
+  id            Int      @id @default(autoincrement())
+  customerId    String   @db.VarChar(20) @map("customer_id")
+  code          String?  @db.VarChar(10)
+  detail        String?  @db.VarChar(150)
+  siaRawMessage String?  @db.Text @map("sia_raw_message")
+  mailSent      Boolean  @default(false) @map("mail_sent")
+  managedBy     Int?     @map("managed_by")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [account])
+
+  @@map("alarms")
+}
+
+model SiaMessage {
+  id            Int      @id @default(autoincrement())
+  customerId    String   @db.VarChar(20) @map("customer_id")
+  messageType   String?  @db.VarChar(20) @map("message_type")
+  siaRawMessage String?  @db.Text @map("sia_raw_message")
+  acked         Boolean?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [account])
+
+  @@map("sia_messages")
+}
+
+model KeepAlive {
+  id            Int      @id @default(autoincrement())
+  customerId    String   @unique @db.VarChar(20) @map("customer_id")
+  siaRawMessage String?  @db.Text @map("sia_raw_message")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [account])
+
+  @@map("keep_alives")
+}
+
+model SiaCode {
+  id          Int    @id @default(autoincrement())
+  code        String @unique @db.VarChar(2)
+  description String @db.VarChar(200)
+
+  @@map("sia_codes")
+}
+
+model Subscription {
+  id           Int    @id @default(autoincrement())
+  code         String @db.VarChar(16)
+  description  String @db.VarChar(100)
+  daysDuration Int    @map("days_duration")
+
+  @@map("subscriptions")
+}
+
+model AbboAttivi {
+  destinazione String   @id @db.VarChar(20)
+  scadenza     DateTime
+
+  @@map("abboattivi")
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  endpoint  String   @unique
+  keys      Json     // { p256dh, auth }
+  userId    Int?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("push_subscriptions")
+}
+
+model Statistic {
+  id         Int      @id @default(autoincrement())
+  keepAlives BigInt   @default(0) @map("keep_alives")
+  alarms     BigInt   @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("statistics")
+}

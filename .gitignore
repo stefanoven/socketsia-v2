@@ -1,0 +1,37 @@
+# ── Dipendenze ────────────────────────────────────────────
+node_modules/
+
+# ── File ambiente (non committare MAI) ────────────────────
+.env
+.env.*
+*.env
+
+# ── Build artifacts ───────────────────────────────────────
+dist/
+dist-ssr/
+build/
+
+# ── Log ───────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ── OS / Editor ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ── Prisma binaries (rigenerabili con prisma generate) ────
+*.dll.node
+query_engine-*
+libquery_engine-*
