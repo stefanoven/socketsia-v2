@@ -5,6 +5,9 @@ node_modules/
 .env
 .env.*
 *.env
+# eccezione: i template di esempio vanno in repo
+!.env.example
+!**/.env.example
 
 # ── Build artifacts ───────────────────────────────────────
 dist/
