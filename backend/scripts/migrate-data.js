@@ -29,7 +29,10 @@ const prisma = new PrismaClient();
  */
 function parseInserts(filename) {
   const content = readFileSync(join(DUMP_DIR, filename), 'utf8');
-  const insertRegex = /INSERT INTO `\w+` VALUES\s*([\s\S]+?);/g;
+  // Matches both formats:
+  //   INSERT INTO `t` VALUES (...)           ← without --complete-insert
+  //   INSERT INTO `t` (`col1`,...) VALUES (...) ← with --complete-insert (MySQL 8 default)
+  const insertRegex = /INSERT INTO `\w+`\s*(?:\([^)]+\)\s*)?VALUES\s*([\s\S]+?);/g;
   const rows = [];
 
   let match;
