@@ -185,26 +185,8 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  /* SSE — real-time updates when new alarm/keepalive arrives */
-  useEffect(() => {
-    // withCredentials ensures the JWT cookie is sent (required for auth)
-    const es = new EventSource('/api/events', { withCredentials: true });
-
-    es.addEventListener('alarm', () => {
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-      queryClient.invalidateQueries({ queryKey: ['alarms'] });
-    });
-    es.addEventListener('keepalive', () => {
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-    });
-
-    // Log SSE errors in dev to aid debugging (silent in production)
-    es.onerror = (e) => {
-      if (import.meta.env.DEV) console.warn('[SSE] connection error', e);
-    };
-
-    return () => es.close();
-  }, [queryClient]);
+  // SSE events (alarm / keepalive) are handled globally by the useSSE() hook
+  // mounted in Layout.jsx — no local EventSource needed here.
 
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['stats'],

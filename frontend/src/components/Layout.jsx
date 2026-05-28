@@ -5,6 +5,7 @@ import {
   Menu, BellRing, BellOff, Sun, Moon,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth.jsx';
+import { useSSE } from '../hooks/useSSE.js';
 import { useTheme } from '../contexts/ThemeContext.jsx';
 import { useNotification } from '../contexts/NotificationContext.jsx';
 
@@ -57,6 +58,7 @@ export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const { dark, toggle: toggleTheme } = useTheme();
   const { status: notifStatus, subscribe, unsubscribe } = useNotification();
+  const sseConnected = useSSE();
 
   const [collapsed, setCollapsed] = useState(() => {
     try { return localStorage.getItem('sidebar-collapsed') === 'true'; } catch { return false; }
@@ -121,10 +123,28 @@ export default function Layout({ children }) {
       {/* Bottom: user info + actions */}
       <div className={`border-t border-slate-200 dark:border-slate-700 py-3 flex-shrink-0 ${collapsed ? 'px-1' : 'px-3'}`}>
 
-        {/* Username (only when expanded) */}
+        {/* Username + SSE status indicator (only when expanded) */}
         {!collapsed && user && (
           <div className="px-3 py-2 mb-1">
-            <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{user.name}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate flex-1 min-w-0">
+                {user.name}
+              </p>
+              {/* Live connection indicator */}
+              <span
+                title={sseConnected ? 'Backend connesso' : 'Backend disconnesso'}
+                className="flex-shrink-0"
+              >
+                {sseConnected ? (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                  </span>
+                ) : (
+                  <span className="inline-flex rounded-full h-2 w-2 bg-slate-300 dark:bg-slate-600" />
+                )}
+              </span>
+            </div>
             {user.type === 'manager' && (
               <p className="text-xs text-slate-500 dark:text-slate-400">Manager</p>
             )}
