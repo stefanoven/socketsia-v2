@@ -145,6 +145,8 @@ export default function Alarms({ mode = 'all' }) {
   const [year, setYear] = useState('');
   const [page, setPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState(urlFilter);
+  const [showManageAllModal, setShowManageAllModal] = useState(false);
+  const [manageAllText, setManageAllText] = useState('');
 
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 2021 }, (_, i) => currentYear - i);
@@ -208,6 +210,16 @@ export default function Alarms({ mode = 'all' }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alarms'] }),
   });
 
+  const manageAllGlobalMutation = useMutation({
+    mutationFn: () => apiClient.post('/alarms/manage-all'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alarms'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      setShowManageAllModal(false);
+      setManageAllText('');
+    },
+  });
+
   /* Apply client-side filter + text search */
   const filterDef = ALARM_FILTERS.find((f) => f.key === activeFilter);
   const filtered = rawAlarms.filter((a) => {
@@ -250,18 +262,28 @@ export default function Alarms({ mode = 'all' }) {
             </button>
           )}
           {mode === 'all' && (
-            <select
-              value={year}
-              onChange={(e) => { setYear(e.target.value); setPage(1); }}
-              className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm
-                         bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300
-                         focus:outline-none focus:ring-2 focus:ring-blue-300"
-            >
-              <option value="">Tutti gli anni</option>
-              {years.map((y) => (
-                <option key={y} value={y}>{y}</option>
-              ))}
-            </select>
+            <>
+              <select
+                value={year}
+                onChange={(e) => { setYear(e.target.value); setPage(1); }}
+                className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm
+                           bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300
+                           focus:outline-none focus:ring-2 focus:ring-blue-300"
+              >
+                <option value="">Tutti gli anni</option>
+                {years.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowManageAllModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white
+                           bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-colors"
+              >
+                <CheckCircle2 size={14} />
+                Gestisci tutti
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -393,6 +415,53 @@ export default function Alarms({ mode = 'all' }) {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal conferma "Gestisci tutti" ── */}
+      {showManageAllModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700
+                          shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+              Gestisci tutti gli allarmi
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Questa operazione segnerà come gestiti{' '}
+              <strong className="text-slate-700 dark:text-slate-300">tutti gli allarmi non ancora gestiti</strong>.
+              Digita{' '}
+              <span className="font-mono font-bold text-slate-700 dark:text-slate-300">Yes</span>{' '}
+              per confermare.
+            </p>
+            <input
+              type="text"
+              value={manageAllText}
+              onChange={(e) => setManageAllText(e.target.value)}
+              placeholder="Yes"
+              autoFocus
+              className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm
+                         bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200
+                         focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder:text-slate-400"
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowManageAllModal(false); setManageAllText(''); }}
+                className="flex-1 py-2 text-sm font-medium text-slate-600 dark:text-slate-400
+                           bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600
+                           rounded-xl transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => manageAllGlobalMutation.mutate()}
+                disabled={manageAllText !== 'Yes' || manageAllGlobalMutation.isPending}
+                className="flex-1 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600
+                           rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {manageAllGlobalMutation.isPending ? 'In corso...' : 'Conferma'}
+              </button>
+            </div>
           </div>
         </div>
       )}

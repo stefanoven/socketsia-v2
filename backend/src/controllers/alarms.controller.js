@@ -123,6 +123,22 @@ export async function manage(req, res) {
 }
 
 /**
+ * POST /api/alarms/manage-all
+ * Mark ALL unmanaged alarms (across all customers) as managed by the current user.
+ */
+export async function manageAllGlobal(req, res) {
+  try {
+    const result = await prisma.alarm.updateMany({
+      where: { managedBy: null },
+      data: { managedBy: req.user.id },
+    });
+    res.json({ managed: result.count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
+/**
  * POST /api/alarms/customer/:customerId/manage-all
  * Mark all unmanaged alarms for a customer as managed by the current user.
  */

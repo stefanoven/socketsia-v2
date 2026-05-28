@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Save } from 'lucide-react';
 import apiClient from '../api/apiClient.js';
 
@@ -12,13 +12,6 @@ export default function CustomerAdd() {
     customer: '',
     address: '',
     surveyeCode: '',
-    subscription: '1',
-    subscriptionDate: '',
-  });
-
-  const { data: subscriptions = [] } = useQuery({
-    queryKey: ['subscriptions'],
-    queryFn: async () => (await apiClient.get('/subscriptions')).data,
   });
 
   const mutation = useMutation({
@@ -97,29 +90,6 @@ export default function CustomerAdd() {
             onChange={(e) => setForm({ ...form, surveyeCode: e.target.value })}
             className={inputCls}
             placeholder="CCOMXYYYZZZ"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Abbonamento</label>
-          <select
-            value={form.subscription}
-            onChange={(e) => setForm({ ...form, subscription: e.target.value })}
-            className={`${inputCls}`}
-          >
-            {subscriptions.map((s) => (
-              <option key={s.id} value={s.id}>{s.description}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Data abbonamento</label>
-          <input
-            type="date"
-            value={form.subscriptionDate}
-            onChange={(e) => setForm({ ...form, subscriptionDate: e.target.value })}
-            className={inputCls}
           />
         </div>
 

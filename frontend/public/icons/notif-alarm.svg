@@ -1,4 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="40" fill="#dc2626"/>
-  <path fill="white" d="M96 36c-3.3 0-6 2.7-6 6v5C74.5 50.9 62 64.4 62 80v24L50 116v6h92v-6l-12-12V80c0-15.6-12.5-29.1-28-32.9V42c0-3.3-2.7-6-6-6zm0 132c6.6 0 12-5.4 12-12H84c0 6.6 5.4 12 12 12z"/>
+  <rect width="192" height="192" rx="40" fill="#ebb134"/>
+  <!-- Warning triangle -->
+  <path d="M96 30 L168 150 H24 Z" fill="white"/>
+  <!-- Exclamation stem -->
+  <rect x="89" y="68" width="14" height="48" rx="7" fill="#ebb134"/>
+  <!-- Exclamation dot -->
+  <circle cx="96" cy="128" r="8" fill="#ebb134"/>
 </svg>

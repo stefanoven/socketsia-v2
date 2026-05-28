@@ -125,7 +125,7 @@ export async function show(req, res) {
  */
 export async function store(req, res) {
   try {
-    const { customer, address, surveyeCode, subscription, subscriptionDate } = req.body;
+    const { customer, address, surveyeCode } = req.body;
 
     if (!customer || !surveyeCode) {
       return res.status(422).json({ error: 'Nome cliente e codice Surveye sono obbligatori' });
@@ -142,6 +142,10 @@ export async function store(req, res) {
       attempts++;
     } while (attempts < 100);
 
+    // Auto-calculate subscription: always "Relax Lite - Primo Anno" (id=1), expiry = today + 1 year
+    const subscriptionDate = new Date();
+    subscriptionDate.setFullYear(subscriptionDate.getFullYear() + 1);
+
     const newCustomer = await prisma.customer.create({
       data: {
         account,
@@ -149,8 +153,8 @@ export async function store(req, res) {
         address: address || '',
         surveyeCode,
         createdBy: req.user.id,
-        subscription: parseInt(subscription) || 1,
-        subscriptionDate: subscriptionDate ? new Date(subscriptionDate) : null,
+        subscription: 1,
+        subscriptionDate,
       },
     });
 
