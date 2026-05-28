@@ -154,7 +154,7 @@ export function parseSiaMessage(rawBuffer) {
  * Example: "...R000001L010000#99123456[..." → "99123456"
  */
 function extractAccount(payload) {
-  const hashIdx = payload.lastIndexOf('#');
+  const hashIdx = payload.indexOf('#');
   if (hashIdx === -1) return null;
   const bracketIdx = payload.indexOf('[', hashIdx);
   if (bracketIdx === -1) return payload.substring(hashIdx + 1);

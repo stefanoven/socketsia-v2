@@ -125,7 +125,9 @@ async function handleMessage(socket, rawBuffer, remoteAddr) {
       eventBus.emit('new-keepalive', { customerId: account, wasOffline: !!wasOffline });
     } else if (messageType === 'SIA-Alarm') {
       const stored = await storeAlarm(account, rawMessage, siaPayload);
-      eventBus.emit('new-alarm', { customerId: account, code: stored?.code ?? null });
+      if (stored) {
+        eventBus.emit('new-alarm', { customerId: account, code: stored.code ?? null });
+      }
     }
   } catch (err) {
     logger.error({ err: err.message, account, messageType }, '[TCP] Failed to store event');
