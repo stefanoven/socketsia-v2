@@ -5,7 +5,7 @@ import {
   Plus, Trash2, VolumeX, Volume2, BellOff, Bell, Snowflake,
   Sun, Wrench, Wifi, WifiOff, Search, AlertTriangle,
   ChevronUp, ChevronDown, ChevronsUpDown,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Pencil,
 } from 'lucide-react';
 import apiClient from '../api/apiClient.js';
 import { useAuth } from '../hooks/useAuth.jsx';
@@ -103,7 +103,7 @@ function Th({ label, sortKey, currentKey, currentDir, onSort, className = '' }) 
 }
 
 /* ─── Single customer row ─── */
-function CustomerRow({ customer, onAction, isManager }) {
+function CustomerRow({ customer, onAction, onEdit, isManager }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const isOnline = customer.isAlive;
 
@@ -130,11 +130,22 @@ function CustomerRow({ customer, onAction, isManager }) {
 
       {/* Cliente + surveyeCode badge */}
       <td className="px-4 py-3">
-        <div className="flex items-baseline gap-1.5 flex-wrap">
-          <p className="font-medium text-slate-800 dark:text-slate-200 text-sm">{customer.customer}</p>
-          <span className="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700 px-1.5 py-0.5 rounded font-mono whitespace-nowrap">
-            {customer.surveyeCode || '—'}
-          </span>
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-baseline gap-1.5 flex-wrap flex-1 min-w-0">
+            <p className="font-medium text-slate-800 dark:text-slate-200 text-sm">{customer.customer}</p>
+            <span className="text-xs bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700 px-1.5 py-0.5 rounded font-mono whitespace-nowrap">
+              {customer.surveyeCode || '—'}
+            </span>
+          </div>
+          {isManager && (
+            <button
+              onClick={() => onEdit(customer)}
+              className="p-1 text-slate-300 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors flex-shrink-0"
+              title="Modifica cliente"
+            >
+              <Pencil size={12} />
+            </button>
+          )}
         </div>
         <p className="text-xs text-slate-400 truncate max-w-[240px] mt-0.5">{customer.address}</p>
       </td>
@@ -267,6 +278,8 @@ export default function Customers() {
   const [sortDir,     setSortDir]     = useState('asc');
   const [page,        setPage]        = useState(1);
   const [pageSize,    setPageSize]    = useState(25);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [editForm, setEditForm] = useState({ customer: '', address: '', surveyeCode: '' });
 
   // Always load ALL customers — filtering is done client-side
   const { data: customers = [], isLoading } = useQuery({
@@ -286,7 +299,20 @@ export default function Customers() {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: ({ id, data }) => apiClient.patch(`/customers/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      setEditingCustomer(null);
+    },
+  });
+
   const handleAction = (id, action) => mutation.mutate({ id, action });
+
+  const handleEdit = (customer) => {
+    setEditForm({ customer: customer.customer, address: customer.address || '', surveyeCode: customer.surveyeCode || '' });
+    setEditingCustomer(customer);
+  };
 
   /* Toggle filter — single active at a time */
   const toggleFilter = (key) => {
@@ -454,6 +480,7 @@ export default function Customers() {
                       key={customer.id}
                       customer={customer}
                       onAction={handleAction}
+                      onEdit={handleEdit}
                       isManager={isManager}
                     />
                   ))
@@ -547,6 +574,64 @@ export default function Customers() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── Edit customer modal ─── */}
+      {editingCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Modifica cliente</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Account: <span className="font-mono">{editingCustomer.account}</span> — il numero non verrà modificato.
+              </p>
+            </div>
+            {editMutation.error && (
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400">
+                {editMutation.error.response?.data?.error || 'Errore durante la modifica'}
+              </div>
+            )}
+            <div className="space-y-3">
+              {[
+                { label: 'Nome Cliente',   key: 'customer',   placeholder: 'Es. Mario Rossi',  required: true },
+                { label: 'Indirizzo',      key: 'address',    placeholder: 'Via Roma 1, Milano' },
+                { label: 'Codice Surveye', key: 'surveyeCode', placeholder: 'CCOMXYYYZZZ',     required: true },
+              ].map(({ label, key, placeholder, required }) => (
+                <div key={key}>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    {label}{required && <span className="text-red-500 ml-0.5">*</span>}
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm[key]}
+                    onChange={(e) => setEditForm(f => ({ ...f, [key]: e.target.value }))}
+                    placeholder={placeholder}
+                    className="w-full px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-sm
+                               bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-200
+                               focus:outline-none focus:ring-2 focus:ring-blue-300 placeholder:text-slate-400"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditingCustomer(null)}
+                className="flex-1 py-2 text-sm font-medium text-slate-600 dark:text-slate-400
+                           bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => editMutation.mutate({ id: editingCustomer.id, data: editForm })}
+                disabled={!editForm.customer || !editForm.surveyeCode || editMutation.isPending}
+                className="flex-1 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700
+                           rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {editMutation.isPending ? 'Salvataggio...' : 'Salva'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, CheckCircle2 } from 'lucide-react';
 import apiClient from '../api/apiClient.js';
 
 export default function CustomerAdd() {
@@ -13,12 +13,13 @@ export default function CustomerAdd() {
     address: '',
     surveyeCode: '',
   });
+  const [createdCustomer, setCreatedCustomer] = useState(null);
 
   const mutation = useMutation({
     mutationFn: async (data) => (await apiClient.post('/customers', data)).data,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
-      navigate('/customers');
+      setCreatedCustomer(data);
     },
   });
 
@@ -116,6 +117,54 @@ export default function CustomerAdd() {
           </button>
         </div>
       </form>
+
+      {/* ─── Success modal ─── */}
+      {createdCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle2 size={24} className="text-emerald-500" />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Cliente creato!</h2>
+            </div>
+            <div className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Account</span>
+                <span className="font-mono font-bold text-blue-600 dark:text-blue-400 text-base tracking-widest">
+                  {createdCustomer.account}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Nome</span>
+                <span className="font-medium text-slate-800 dark:text-slate-200">{createdCustomer.customer}</span>
+              </div>
+              {createdCustomer.address && (
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-slate-500 dark:text-slate-400 flex-shrink-0">Indirizzo</span>
+                  <span className="text-slate-600 dark:text-slate-300 text-right">{createdCustomer.address}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 dark:text-slate-400">Codice Surveye</span>
+                <span className="font-mono text-slate-600 dark:text-slate-300">{createdCustomer.surveyeCode}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500 dark:text-slate-400 flex-shrink-0">Abbonamento</span>
+                <span className="text-slate-600 dark:text-slate-300 text-right">
+                  Relax Lite — scade {new Date(createdCustomer.subscriptionDate).toLocaleDateString('it-IT')}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/customers')}
+              className="w-full py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors"
+            >
+              Vai ai clienti
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

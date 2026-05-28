@@ -8,6 +8,7 @@ import {
   indexFreezed,
   show,
   store,
+  update,
   destroy,
   muteEvents,
   unmuteEvents,
@@ -30,8 +31,9 @@ router.get('/freezed', indexFreezed);
 // Single customer
 router.get('/:id', show);
 
-// Create / delete (manager only)
+// Create / update / delete (manager only)
 router.post('/', requireManager, store);
+router.patch('/:id', requireManager, update);
 router.delete('/:id', requireManager, destroy);
 
 // Status actions

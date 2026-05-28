@@ -316,3 +316,21 @@ export async function unfreeze(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+/**
+ * PATCH /api/customers/:id
+ * Update customer name, address and surveyeCode (manager only).
+ * Does NOT change the account number.
+ */
+export async function update(req, res) {
+  try {
+    const { customer, address, surveyeCode } = req.body;
+    const updated = await prisma.customer.update({
+      where: { id: parseInt(req.params.id) },
+      data: { customer, address, surveyeCode },
+    });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
