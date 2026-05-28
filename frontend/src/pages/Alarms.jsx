@@ -191,7 +191,7 @@ export default function Alarms({ mode = 'all' }) {
     return () => es.close();
   }, [queryClient]);
 
-  const { data, isLoading } = useQuery({ queryKey, queryFn, refetchInterval: 30_000 });
+  const { data, isLoading } = useQuery({ queryKey, queryFn, refetchInterval: 5_000 });
 
   const isPaginated = mode === 'all' && activeFilter !== 'unmanaged';
   const rawAlarms = isPaginated ? (data?.data || []) : (data || []);

@@ -21,9 +21,15 @@ export async function checkAlarmsJob() {
   isRunning = true;
 
   try {
-    // Find all alarms where email not yet sent
+    // Find alarms where email not yet sent, not yet managed, and at least 5 minutes old.
+    // The 5-minute window gives operators a chance to manage the alarm before an email goes out.
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     const alarms = await prisma.alarm.findMany({
-      where: { mailSent: false },
+      where: {
+        mailSent: false,
+        managedBy: null,
+        createdAt: { lte: fiveMinutesAgo },
+      },
       orderBy: { createdAt: 'asc' },
     });
 
@@ -70,6 +76,16 @@ export async function checkAlarmsJob() {
         logger?.info({ alarmId: alarm.id, account: alarm.customerId }, '[CheckAlarms] Email sent');
       } catch (err) {
         logger?.error({ err: err.message, alarmId: alarm.id }, '[CheckAlarms] Failed to process alarm');
+        // Mark as sent even on failure to prevent infinite retry and SMTP rate limiting.
+        // The error is already logged — operator can follow up manually if needed.
+        try {
+          await prisma.alarm.update({
+            where: { id: alarm.id },
+            data: { mailSent: true },
+          });
+        } catch (updateErr) {
+          logger?.error({ err: updateErr.message, alarmId: alarm.id }, '[CheckAlarms] Could not mark alarm as processed');
+        }
       }
     }
   } catch (err) {
