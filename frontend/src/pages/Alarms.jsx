@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -178,8 +178,18 @@ export default function Alarms({ mode = 'all' }) {
     };
   }
 
-  // SSE events (alarm) are handled globally by the useSSE() hook
-  // mounted in Layout.jsx — no local EventSource needed here.
+  /* SSE — real-time alarm updates (per-page listener guarantees instant display) */
+  useEffect(() => {
+    const es = new EventSource('/api/events', { withCredentials: true });
+    es.addEventListener('alarm', () => {
+      queryClient.invalidateQueries({ queryKey: ['alarms'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+    });
+    es.onerror = (e) => {
+      if (import.meta.env.DEV) console.warn('[SSE] connection error', e);
+    };
+    return () => es.close();
+  }, [queryClient]);
 
   const { data, isLoading } = useQuery({ queryKey, queryFn, refetchInterval: 5_000 });
 

@@ -185,8 +185,21 @@ export default function Dashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  // SSE events (alarm / keepalive) are handled globally by the useSSE() hook
-  // mounted in Layout.jsx — no local EventSource needed here.
+  /* SSE — real-time updates when new alarm/keepalive arrives */
+  useEffect(() => {
+    const es = new EventSource('/api/events', { withCredentials: true });
+    es.addEventListener('alarm', () => {
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      queryClient.invalidateQueries({ queryKey: ['alarms'] });
+    });
+    es.addEventListener('keepalive', () => {
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+    });
+    es.onerror = (e) => {
+      if (import.meta.env.DEV) console.warn('[SSE] connection error', e);
+    };
+    return () => es.close();
+  }, [queryClient]);
 
   const { data: stats, isLoading, error } = useQuery({
     queryKey: ['stats'],
@@ -363,9 +376,9 @@ export default function Dashboard() {
                     <p className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
                       {alarm.customer?.customer || alarm.customerId}
                     </p>
-                    {alarm.siaCode?.description && (
+                    {(alarm.siaCode?.description || alarm.detail) && (
                       <p className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                        {alarm.siaCode.description}
+                        {[alarm.siaCode?.description, alarm.detail].filter(Boolean).join(' · ')}
                       </p>
                     )}
                   </div>
