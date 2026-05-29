@@ -31,10 +31,10 @@ export default defineConfig({
         ],
       },
       injectManifest: {
+        // Esclude icons/ dal precache: Apache non serve quella dir correttamente
+        // e i file vengono caricati dinamicamente (push payload / manifest PWA).
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
-        // Le icone di notifica non vanno precachate: vengono caricate
-        // dinamicamente dal push payload e non servono nell'install event.
-        globIgnores: ['icons/notif-*.svg'],
+        globIgnores: ['icons/**'],
       },
     }),
   ],
