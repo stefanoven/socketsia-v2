@@ -395,9 +395,10 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-0">
               {lastEvents.lastAlarms.map((alarm) => (
-                <div
+                <Link
                   key={alarm.id}
-                  className="flex items-center gap-2 py-2 border-b border-slate-50 dark:border-slate-700/50 last:border-0"
+                  to={`/customers?search=${alarm.customerId}`}
+                  className="flex items-center gap-2 py-2 border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-red-50/50 dark:hover:bg-red-900/10 rounded-lg px-1 -mx-1 transition-colors cursor-pointer"
                 >
                   {alarm.code && (
                     <span className="font-mono text-xs bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400
@@ -418,7 +419,7 @@ export default function Dashboard() {
                   <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap flex-shrink-0">
                     {formatDateShort(alarm.createdAt)}
                   </span>
-                </div>
+                </Link>
               ))}
             </div>
           )}

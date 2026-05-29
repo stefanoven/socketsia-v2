@@ -125,7 +125,13 @@ function CustomerRow({ customer, onAction, onEdit, isManager }) {
 
       {/* Account */}
       <td className="px-4 py-3">
-        <span className="font-mono text-sm text-slate-600">{customer.account}</span>
+        <Link
+          to={`/alarms/customer/${customer.account}`}
+          className="font-mono text-sm text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+          title="Vedi allarmi di questo cliente"
+        >
+          {customer.account}
+        </Link>
       </td>
 
       {/* Cliente + surveyeCode badge */}
@@ -271,8 +277,9 @@ export default function Customers() {
   // Read initial filter from URL ?filter= param
   const [searchParams, setSearchParams] = useSearchParams();
   const urlFilter = searchParams.get('filter') || '';
+  const urlSearch = searchParams.get('search') || '';
 
-  const [search,      setSearch]      = useState('');
+  const [search,      setSearch]      = useState(urlSearch);
   const [activeFilter, setActiveFilter] = useState(urlFilter);
   const [sortKey,     setSortKey]     = useState('customer');
   const [sortDir,     setSortDir]     = useState('asc');
