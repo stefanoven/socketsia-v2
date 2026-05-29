@@ -114,10 +114,16 @@ export function initPushService(logger) {
   logger?.info('[Push] Web Push service ready');
 
   // ── 1. Alarm notification ──────────────────────────────
-  // Always fired when a new alarm arrives from any panel.
+  // Fired when a new alarm arrives from any panel — skip if customer is snoozed/frozen.
   eventBus.on('new-alarm', async (payload) => {
     if (!ready) return;
     try {
+      const customer = await prisma.customer.findUnique({
+        where: { account: payload.customerId },
+        select: { isAlarmsSnoozed: true, freezedAt: true },
+      });
+      if (customer?.isAlarmsSnoozed || customer?.freezedAt) return;
+
       const [title, body] = await Promise.all([
         alarmTitle(payload.code),
         customerBody(payload.customerId),

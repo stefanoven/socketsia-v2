@@ -45,10 +45,16 @@ export async function getStats(req, res) {
           freezedAt: null,
         },
       }),
-      // Last 10 alarms (real-time list)
+      // Last 10 alarms (real-time list) — exclude snoozed/frozen customers
       prisma.alarm.findMany({
         take: 10,
         orderBy: { createdAt: 'desc' },
+        where: {
+          customer: {
+            isAlarmsSnoozed: false,
+            freezedAt: null,
+          },
+        },
         include: { customer: true },
       }),
       // Last 10 keepalives (real-time list)
