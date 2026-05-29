@@ -32,6 +32,9 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // Le icone di notifica non vanno precachate: vengono caricate
+        // dinamicamente dal push payload e non servono nell'install event.
+        globIgnores: ['icons/notif-*.svg'],
       },
     }),
   ],
