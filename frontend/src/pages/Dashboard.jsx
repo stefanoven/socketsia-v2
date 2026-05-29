@@ -98,7 +98,12 @@ function DonutChart({ online, offline, neverSeen, total }) {
           <div key={item.label} className="flex items-center gap-2 text-sm">
             <item.icon size={13} className={item.cls} />
             <span className="text-slate-500 dark:text-slate-400">{item.label}</span>
-            <span className="font-semibold text-slate-800 dark:text-slate-200">{item.count}</span>
+            <span className="font-semibold text-slate-800 dark:text-slate-200">
+              {item.count}
+              <span className="text-xs font-normal text-slate-400 ml-1">
+                ({total > 0 ? Math.round((item.count / total) * 100) : 0}%)
+              </span>
+            </span>
           </div>
         ))}
       </div>
@@ -188,13 +193,41 @@ export default function Dashboard() {
   /* SSE — real-time updates when new alarm/keepalive arrives */
   useEffect(() => {
     const es = new EventSource('/api/events', { withCredentials: true });
+
     es.addEventListener('alarm', () => {
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      // Update istantaneo dei contatori nel cache (nessuna latenza visibile)
+      queryClient.setQueryData(['stats'], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          alarms: {
+            ...old.alarms,
+            total: old.alarms.total + 1,
+            unmanaged: old.alarms.unmanaged + 1,
+          },
+        };
+      });
+      // Sync completo in background (lista allarmi, ultimi eventi, ecc.)
       queryClient.invalidateQueries({ queryKey: ['alarms'] });
-    });
-    es.addEventListener('keepalive', () => {
       queryClient.invalidateQueries({ queryKey: ['stats'] });
     });
+
+    es.addEventListener('keepalive', () => {
+      // Update istantaneo del contatore cumulativo keepalive
+      queryClient.setQueryData(['stats'], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          statistics: {
+            ...old.statistics,
+            keepAlives: old.statistics.keepAlives + 1,
+          },
+        };
+      });
+      // Sync in background (connettività, lastKeepalives)
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+    });
+
     es.onerror = (e) => {
       if (import.meta.env.DEV) console.warn('[SSE] connection error', e);
     };
@@ -223,7 +256,7 @@ export default function Dashboard() {
     );
   }
 
-  const { customers, connectivity, alarms, lastEvents } = stats;
+  const { customers, connectivity, alarms, lastEvents, statistics } = stats;
   const quickLinks = buildQuickLinks(alarms, customers, connectivity);
 
   return (
@@ -283,7 +316,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 text-sm">
               <Activity size={13} className="text-emerald-500 flex-shrink-0" />
               <span className="text-slate-500 dark:text-slate-400 flex-1">Keep-alive</span>
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{alarms.totalKeepalives}</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">{statistics.keepAlives.toLocaleString('it-IT')}</span>
             </div>
             {alarms.avgManageMinutes !== null && (
               <div className="flex items-center gap-2 text-sm">
