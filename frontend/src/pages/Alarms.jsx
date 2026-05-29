@@ -115,7 +115,7 @@ function AlarmRow({ alarm, onManage }) {
       </td>
 
       {/* ── Col 5: data ── */}
-      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap hidden lg:table-cell">
+      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
         {formatDate(alarm.createdAt)}
       </td>
 
@@ -367,7 +367,7 @@ export default function Alarms({ mode = 'all' }) {
                   <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Codice</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Segnalazione</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Cliente</th>
-                  <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase hidden lg:table-cell">Data</th>
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Data</th>
                   <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Azione</th>
                 </tr>
               </thead>
