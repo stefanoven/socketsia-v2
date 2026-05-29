@@ -1,7 +1,7 @@
 /**
  * Check Alive Job — runs every 5 minutes.
  * Monitors customer connectivity: marks is_alive=false if no keep-alive
- * has been received in the last 5 minutes, then emits 'panel-offline'
+ * has been received in the last 1 hour, then emits 'panel-offline'
  * so the push service can notify subscribers.
  */
 import prisma from '../lib/prisma.js';
@@ -9,7 +9,7 @@ import { sendKeepAliveEmail } from '../services/emailService.js';
 import { eventBus } from '../lib/eventBus.js';
 
 /** Threshold: panel is considered offline after this many ms without a keepalive */
-const OFFLINE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+const OFFLINE_THRESHOLD_MS = 60 * 60 * 1000; // 1 hour
 
 let logger;
 let isRunning = false;

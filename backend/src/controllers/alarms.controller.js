@@ -154,3 +154,24 @@ export async function manageAll(req, res) {
     res.status(500).json({ error: err.message });
   }
 }
+
+/**
+ * POST /api/alarms/manage-many
+ * Mark specific alarms (by ID array) as managed by the current user.
+ * Used by "Gestisci tutti" to operate only on currently visible/filtered alarms.
+ */
+export async function manageMany(req, res) {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'ids must be a non-empty array' });
+    }
+    const result = await prisma.alarm.updateMany({
+      where: { id: { in: ids.map(Number) }, managedBy: null },
+      data: { managedBy: req.user.id },
+    });
+    res.json({ managed: result.count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}

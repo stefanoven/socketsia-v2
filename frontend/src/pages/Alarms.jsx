@@ -205,21 +205,6 @@ export default function Alarms({ mode = 'all' }) {
     },
   });
 
-  const manageAllMutation = useMutation({
-    mutationFn: () => apiClient.post(`/alarms/customer/${customerId}/manage-all`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alarms'] }),
-  });
-
-  const manageAllGlobalMutation = useMutation({
-    mutationFn: () => apiClient.post('/alarms/manage-all'),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['alarms'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-      setShowManageAllModal(false);
-      setManageAllText('');
-    },
-  });
-
   /* Apply client-side filter + text search */
   const filterDef = ALARM_FILTERS.find((f) => f.key === activeFilter);
   const filtered = rawAlarms.filter((a) => {
@@ -241,6 +226,20 @@ export default function Alarms({ mode = 'all' }) {
     );
   });
 
+  /* IDs of currently visible alarms that are still unmanaged */
+  const filteredUnmanagedIds = filtered.filter((a) => !a.managedBy).map((a) => a.id);
+
+  /* Manage only the currently visible (filtered) unmanaged alarms */
+  const manageVisibleMutation = useMutation({
+    mutationFn: () => apiClient.post('/alarms/manage-many', { ids: filteredUnmanagedIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alarms'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      setShowManageAllModal(false);
+      setManageAllText('');
+    },
+  });
+
   const titles = {
     all:      'Allarmi',
     customer: `Allarmi — ${customerId}`,
@@ -254,11 +253,11 @@ export default function Alarms({ mode = 'all' }) {
         <div className="flex items-center gap-2">
           {mode === 'customer' && customerId && (
             <button
-              onClick={() => manageAllMutation.mutate()}
-              disabled={manageAllMutation.isPending}
-              className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-colors"
+              onClick={() => manageVisibleMutation.mutate()}
+              disabled={manageVisibleMutation.isPending || filteredUnmanagedIds.length === 0}
+              className="px-4 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-colors disabled:opacity-40"
             >
-              Gestisci tutti
+              Gestisci tutti ({filteredUnmanagedIds.length})
             </button>
           )}
           {mode === 'all' && (
@@ -277,11 +276,12 @@ export default function Alarms({ mode = 'all' }) {
               </select>
               <button
                 onClick={() => setShowManageAllModal(true)}
+                disabled={filteredUnmanagedIds.length === 0}
                 className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white
-                           bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-colors"
+                           bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-colors disabled:opacity-40"
               >
                 <CheckCircle2 size={14} />
-                Gestisci tutti
+                Gestisci tutti ({filteredUnmanagedIds.length})
               </button>
             </>
           )}
@@ -425,11 +425,14 @@ export default function Alarms({ mode = 'all' }) {
           <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700
                           shadow-2xl p-6 w-full max-w-sm mx-4 space-y-4">
             <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-              Gestisci tutti gli allarmi
+              Gestisci allarmi visibili
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Questa operazione segnerà come gestiti{' '}
-              <strong className="text-slate-700 dark:text-slate-300">tutti gli allarmi non ancora gestiti</strong>.
+              <strong className="text-slate-700 dark:text-slate-300">
+                {filteredUnmanagedIds.length} allarmi visibili
+              </strong>{' '}
+              (filtrati dalla ricerca corrente).
               Digita{' '}
               <span className="font-mono font-bold text-slate-700 dark:text-slate-300">Yes</span>{' '}
               per confermare.
@@ -454,12 +457,12 @@ export default function Alarms({ mode = 'all' }) {
                 Annulla
               </button>
               <button
-                onClick={() => manageAllGlobalMutation.mutate()}
-                disabled={manageAllText !== 'Yes' || manageAllGlobalMutation.isPending}
+                onClick={() => manageVisibleMutation.mutate()}
+                disabled={manageAllText !== 'Yes' || manageVisibleMutation.isPending}
                 className="flex-1 py-2 text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600
                            rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {manageAllGlobalMutation.isPending ? 'In corso...' : 'Conferma'}
+                {manageVisibleMutation.isPending ? 'In corso...' : 'Conferma'}
               </button>
             </div>
           </div>
