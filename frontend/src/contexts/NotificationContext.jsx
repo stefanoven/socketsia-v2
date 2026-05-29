@@ -44,16 +44,27 @@ export function NotificationProvider({ children }) {
 
       const { data } = await apiClient.get('/push/vapid-key');
       const reg = await navigator.serviceWorker.ready;
+
+      // Rimuove eventuali sottoscrizioni stale prima di crearne una nuova.
+      // Chrome può rifiutare subscribe() se esiste già una sub parzialmente
+      // rimossa, oppure se la applicationServerKey non corrisponde a quella
+      // della sub precedente (es. cambio VAPID key).
+      const existing = await reg.pushManager.getSubscription();
+      if (existing) await existing.unsubscribe();
+
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(data.publicKey),
+        applicationServerKey: urlBase64ToUint8Array(data.publicKey.trim()),
       });
 
-      const { endpoint, keys } = sub.toJSON();
-      await apiClient.post('/push/subscribe', { endpoint, keys });
+      const subJson = sub.toJSON();
+      await apiClient.post('/push/subscribe', {
+        endpoint: subJson.endpoint,
+        keys: subJson.keys,
+      });
       setStatus('subscribed');
     } catch (err) {
-      console.error('[Push] Subscribe error:', err);
+      console.error('[Push] Subscribe failed:', err.name, err.message);
       setStatus('not-subscribed');
     }
   }, []);
