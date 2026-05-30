@@ -24,6 +24,7 @@ function broadcast(event, data = {}) {
 // Listen to the shared event bus
 eventBus.on('new-alarm', (payload) => broadcast('alarm', payload));
 eventBus.on('new-keepalive', (payload) => broadcast('keepalive', payload));
+eventBus.on('panel-offline', (payload) => broadcast('panel-offline', payload));
 
 /**
  * Express route handler for SSE connections.

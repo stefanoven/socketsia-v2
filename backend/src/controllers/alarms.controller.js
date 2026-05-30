@@ -4,6 +4,7 @@
  * Ported from AlarmController.php
  */
 import prisma from '../lib/prisma.js';
+import { computeCustomerStatus, loadStatusReferenceData } from '../services/customerStatusService.js';
 
 const PAGE_SIZE = 100;
 
@@ -18,22 +19,34 @@ async function enrichAlarms(alarms) {
   const codes = [...new Set(alarms.map((a) => a.code?.substring(0, 2)).filter(Boolean))];
   const managerIds = [...new Set(alarms.map((a) => a.managedBy).filter(Boolean))];
 
-  const [customers, siaCodes, managers] = await Promise.all([
+  const [customers, siaCodes, managers, [abboAttivi, subscriptions]] = await Promise.all([
     prisma.customer.findMany({ where: { account: { in: accountIds } } }),
     codes.length ? prisma.siaCode.findMany({ where: { code: { in: codes } } }) : [],
     managerIds.length ? prisma.user.findMany({ where: { id: { in: managerIds } } }) : [],
+    loadStatusReferenceData(),
   ]);
 
   const customerMap = Object.fromEntries(customers.map((c) => [c.account, c]));
   const siaCodeMap = Object.fromEntries(siaCodes.map((s) => [s.code, s]));
   const managerMap = Object.fromEntries(managers.map((u) => [u.id, u]));
+  const subMap = Object.fromEntries(subscriptions.map((s) => [s.id, s]));
 
-  return alarms.map((alarm) => ({
-    ...alarm,
-    customer: customerMap[alarm.customerId] ?? null,
-    siaCode: alarm.code ? siaCodeMap[alarm.code.substring(0, 2)] ?? null : null,
-    managedByUser: alarm.managedBy ? managerMap[alarm.managedBy] ?? null : null,
-  }));
+  function isInterrotto(customer) {
+    if (!customer) return false;
+    const sub = subMap[customer.subscription] ?? { daysDuration: 365 };
+    const { stato } = computeCustomerStatus(customer, sub, abboAttivi);
+    return stato === 'Interrotto';
+  }
+
+  return alarms.map((alarm) => {
+    const customer = customerMap[alarm.customerId] ?? null;
+    return {
+      ...alarm,
+      customer: customer ? { ...customer, isInterrotto: isInterrotto(customer) } : null,
+      siaCode: alarm.code ? siaCodeMap[alarm.code.substring(0, 2)] ?? null : null,
+      managedByUser: alarm.managedBy ? managerMap[alarm.managedBy] ?? null : null,
+    };
+  });
 }
 
 /**

@@ -11,6 +11,7 @@
 import webpush from 'web-push';
 import prisma from '../lib/prisma.js';
 import { eventBus } from '../lib/eventBus.js';
+import { computeCustomerStatus, loadStatusReferenceData } from './customerStatusService.js';
 
 let ready = false;
 let _logger = null;
@@ -120,9 +121,17 @@ export function initPushService(logger) {
     try {
       const customer = await prisma.customer.findUnique({
         where: { account: payload.customerId },
-        select: { isAlarmsSnoozed: true, freezedAt: true },
+        select: { isAlarmsSnoozed: true, freezedAt: true, testedAt: true, createdAt: true, surveyeCode: true, subscription: true },
       });
       if (customer?.isAlarmsSnoozed || customer?.freezedAt) return;
+
+      // Skip push for customers with no active subscription ("Interrotto")
+      if (customer) {
+        const [abboAttivi, subscriptions] = await loadStatusReferenceData();
+        const sub = subscriptions.find((s) => s.id === customer.subscription) ?? { daysDuration: 365 };
+        const { stato } = computeCustomerStatus(customer, sub, abboAttivi);
+        if (stato === 'Interrotto') return;
+      }
 
       const [title, body] = await Promise.all([
         alarmTitle(payload.code),

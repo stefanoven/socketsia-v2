@@ -2,6 +2,7 @@
  * Customer Status Service
  * Replicates the PHP Customer model methods: stato(), scadenza(), hasAbbo()
  */
+import prisma from '../lib/prisma.js';
 
 /**
  * Compute customer status, expiration date, and subscription info.
@@ -43,6 +44,18 @@ export function computeCustomerStatus(customer, subscription, abboAttivi) {
   }
 
   return { stato: 'Interrotto', scadenza, hasAbbo: false };
+}
+
+/**
+ * Load reference data needed to compute customer status for any number of customers.
+ * Call once per request/job run to avoid N+1 queries.
+ * @returns {Promise<[object[], object[]]>} [abboAttivi, subscriptions]
+ */
+export async function loadStatusReferenceData() {
+  return Promise.all([
+    prisma.abboAttivi.findMany(),
+    prisma.subscription.findMany(),
+  ]);
 }
 
 /**

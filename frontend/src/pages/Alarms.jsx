@@ -50,7 +50,7 @@ function AlarmRow({ alarm, onManage }) {
     : 'text-slate-400 bg-slate-50 border border-slate-100 dark:bg-slate-800 dark:text-slate-500 dark:border-slate-700';
 
   return (
-    <tr className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${!alarm.managedBy ? 'bg-blue-50/20 dark:bg-blue-900/10' : ''}`}>
+    <tr className={`hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors ${alarm.customer?.isInterrotto ? 'bg-red-50/40 dark:bg-red-900/10' : (!alarm.managedBy ? 'bg-blue-50/20 dark:bg-blue-900/10' : '')}`}>
 
       {/* ── Col 1: gestito (con tooltip) ── */}
       <td className="px-4 py-3 text-center">

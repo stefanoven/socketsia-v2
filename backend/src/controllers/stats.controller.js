@@ -3,6 +3,7 @@
  * Returns dashboard statistics — replicates the home.blade.php data.
  */
 import prisma from '../lib/prisma.js';
+import { computeCustomerStatus, loadStatusReferenceData } from '../services/customerStatusService.js';
 
 /**
  * GET /api/stats
@@ -26,6 +27,7 @@ export async function getStats(req, res) {
       neverSeenCount,
       lastAlarms,
       lastKeepalives,
+      lastDisconnected,
       statistic,
       managedByStats,
     ] = await Promise.all([
@@ -61,6 +63,13 @@ export async function getStats(req, res) {
       prisma.keepAlive.findMany({
         take: 10,
         orderBy: { updatedAt: 'desc' },
+        include: { customer: true },
+      }),
+      // Last 10 recently disconnected panels (isAlive=false, sorted by last keepalive desc)
+      prisma.keepAlive.findMany({
+        where: { customer: { isAlive: false, freezedAt: null } },
+        orderBy: { updatedAt: 'desc' },
+        take: 10,
         include: { customer: true },
       }),
       prisma.statistic.findFirst(),
@@ -104,6 +113,17 @@ export async function getStats(req, res) {
       count: m._count.id,
     }));
 
+    // Load subscription reference data to compute isInterrotto for lastAlarms + lastDisconnected
+    const [abboAttivi, subscriptions] = await loadStatusReferenceData();
+    const subMap = Object.fromEntries(subscriptions.map((s) => [s.id, s]));
+
+    function customerIsInterrotto(customer) {
+      if (!customer) return false;
+      const sub = subMap[customer.subscription] ?? { daysDuration: 365 };
+      const { stato } = computeCustomerStatus(customer, sub, abboAttivi);
+      return stato === 'Interrotto';
+    }
+
     res.json({
       customers: {
         total: totalCustomers,
@@ -135,7 +155,11 @@ export async function getStats(req, res) {
           managedBy: a.managedBy,
           siaCode: a.code ? (siaCodeMap[a.code.substring(0, 2)] ?? null) : null,
           customer: a.customer
-            ? { customer: a.customer.customer, surveyeCode: a.customer.surveyeCode }
+            ? {
+                customer: a.customer.customer,
+                surveyeCode: a.customer.surveyeCode,
+                isInterrotto: customerIsInterrotto(a.customer),
+              }
             : null,
         })),
         lastKeepalives: lastKeepalives.map((k) => ({
@@ -143,6 +167,14 @@ export async function getStats(req, res) {
           updatedAt: k.updatedAt,
           customer: k.customer
             ? { customer: k.customer.customer, surveyeCode: k.customer.surveyeCode }
+            : null,
+        })),
+        lastDisconnected: lastDisconnected.map((k) => ({
+          customerId: k.customerId,
+          lastSeen: k.updatedAt,
+          isInterrotto: customerIsInterrotto(k.customer),
+          customer: k.customer
+            ? { customer: k.customer.customer, surveyeCode: k.customer.surveyeCode, address: k.customer.address }
             : null,
         })),
       },

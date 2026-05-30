@@ -228,6 +228,10 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ['stats'] });
     });
 
+    es.addEventListener('panel-offline', () => {
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+    });
+
     es.onerror = (e) => {
       if (import.meta.env.DEV) console.warn('[SSE] connection error', e);
     };
@@ -378,8 +382,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Row 2: Ultimi 10 allarmi + Ultimi 10 KeepAlive ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* ── Row 2: Ultimi 10 allarmi + Ultimi 10 KeepAlive + Ultimi disconnessi ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
         {/* Ultimi 10 allarmi */}
         <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
@@ -398,7 +402,10 @@ export default function Dashboard() {
                 <Link
                   key={alarm.id}
                   to={`/customers?search=${alarm.customerId}`}
-                  className="flex items-center gap-2 py-2 border-b border-slate-50 dark:border-slate-700/50 last:border-0 hover:bg-red-50/50 dark:hover:bg-red-900/10 rounded-lg px-1 -mx-1 transition-colors cursor-pointer"
+                  className={`flex items-center gap-2 py-2 border-b border-slate-50 dark:border-slate-700/50 last:border-0 rounded-lg px-1 -mx-1 transition-colors cursor-pointer
+                    ${alarm.customer?.isInterrotto
+                      ? 'bg-red-50/70 dark:bg-red-900/20 hover:bg-red-100/80 dark:hover:bg-red-900/30'
+                      : 'hover:bg-red-50/50 dark:hover:bg-red-900/10'}`}
                 >
                   {alarm.code && (
                     <span className="font-mono text-xs bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400
@@ -456,6 +463,51 @@ export default function Dashboard() {
                     {formatDateShort(ka.updatedAt)}
                   </span>
                 </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Ultimi disconnessi */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <WifiOff size={15} className="text-orange-400" />
+            <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wide">
+              Ultimi disconnessi
+            </p>
+          </div>
+
+          {!lastEvents.lastDisconnected?.length ? (
+            <p className="text-sm text-slate-400 dark:text-slate-500">Nessun pannello offline</p>
+          ) : (
+            <div className="space-y-0">
+              {lastEvents.lastDisconnected.map((d) => (
+                <Link
+                  key={d.customerId}
+                  to={`/customers?search=${d.customerId}`}
+                  className={`flex items-center gap-2 py-2 border-b border-slate-50 dark:border-slate-700/50 last:border-0 rounded-lg px-1 -mx-1 transition-colors cursor-pointer
+                    ${d.isInterrotto
+                      ? 'bg-red-50/50 dark:bg-red-900/10 hover:bg-red-100/70 dark:hover:bg-red-900/20'
+                      : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'}`}
+                >
+                  {d.isInterrotto ? (
+                    <span className="text-xs bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400
+                                     border border-red-200 dark:border-red-800 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
+                      {d.customer?.surveyeCode || d.customerId}
+                    </span>
+                  ) : d.customer?.surveyeCode ? (
+                    <span className="text-xs bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400
+                                     border border-orange-200 dark:border-orange-700 px-1.5 py-0.5 rounded font-mono flex-shrink-0">
+                      {d.customer.surveyeCode}
+                    </span>
+                  ) : null}
+                  <p className="flex-1 text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
+                    {d.customer?.customer || d.customerId}
+                  </p>
+                  <span className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap flex-shrink-0">
+                    {formatDateShort(d.lastSeen)}
+                  </span>
+                </Link>
               ))}
             </div>
           )}

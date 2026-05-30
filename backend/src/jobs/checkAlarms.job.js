@@ -5,6 +5,7 @@
  */
 import prisma from '../lib/prisma.js';
 import { sendAlarmEmail } from '../services/emailService.js';
+import { computeCustomerStatus, loadStatusReferenceData } from '../services/customerStatusService.js';
 
 let logger;
 let isRunning = false;
@@ -40,6 +41,10 @@ export async function checkAlarmsJob() {
 
     logger?.info({ count: alarms.length }, '[CheckAlarms] Processing unnotified alarms');
 
+    // Load once per job run to avoid N+1 queries when checking customer status
+    const [abboAttivi, subscriptions] = await loadStatusReferenceData();
+    const subMap = Object.fromEntries(subscriptions.map((s) => [s.id, s]));
+
     for (const alarm of alarms) {
       try {
         // Get customer
@@ -55,6 +60,19 @@ export async function checkAlarmsJob() {
             data: { mailSent: true },
           });
           continue;
+        }
+
+        // Skip if customer subscription is "Interrotto" (no active service)
+        if (customer) {
+          const sub = subMap[customer.subscription] ?? { daysDuration: 365 };
+          const { stato } = computeCustomerStatus(customer, sub, abboAttivi);
+          if (stato === 'Interrotto') {
+            await prisma.alarm.update({
+              where: { id: alarm.id },
+              data: { mailSent: true },
+            });
+            continue;
+          }
         }
 
         // Get SIA code description
