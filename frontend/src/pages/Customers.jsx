@@ -157,7 +157,7 @@ function CustomerRow({ customer, onAction, onEdit, isManager }) {
       </td>
 
       {/* Stato abbonamento */}
-      <td className="px-4 py-3 hidden md:table-cell">
+      <td className="px-4 py-3">
         <span
           className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap
                       ${STATUS_COLORS[customer.stato] || 'bg-slate-100 text-slate-600'}`}
@@ -467,7 +467,7 @@ export default function Customers() {
                   <Th label="⚡"       sortKey="isAlive"  {...sp} className="text-center w-10" />
                   <Th label="Account"  sortKey="account"  {...sp} />
                   <Th label="Cliente"  sortKey="customer" {...sp} />
-                  <Th label="Stato"    sortKey="stato"    {...sp} className="hidden md:table-cell" />
+                  <Th label="Stato"    sortKey="stato"    {...sp} />
                   <Th label="Scadenza" sortKey="scadenza" {...sp} className="hidden xl:table-cell" />
                   <Th label="Coll."    sortKey="testedAt" {...sp} className="hidden lg:table-cell" />
                   <th className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase">Flag</th>
